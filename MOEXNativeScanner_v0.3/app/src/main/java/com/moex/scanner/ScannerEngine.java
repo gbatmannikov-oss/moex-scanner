@@ -53,7 +53,7 @@ public final class ScannerEngine {
         if(last.c>r.vwap){score+=0.4;why.add("above VWAP");} else {score-=0.4;why.add("below VWAP");}
         double av=avgVol(m5,20); if(last.v>=av*1.25){score+=(last.c>=last.o?0.35:-0.35);why.add("volume expansion");}
 
-        score += positioningScore(f,d,why,r);
+        score += positioningScore(f,d,why,r,last.c>=m5.get(m5.size()-2).c);
         r.score=score;
 
         boolean longStructure=nearDemand && bull.sweep>=0 && bull.bos>=0 && bullRetest;
@@ -97,22 +97,41 @@ public final class ScannerEngine {
         r.score=score; r.reasons=String.join(" · ",why); return r;
     }
 
-    private double positioningScore(MarketApi.FutoI f,MarketApi.FutoDelta d,List<String> why,Result r){
+    private double positioningScore(MarketApi.FutoI f,MarketApi.FutoDelta d,List<String> why,Result r,boolean priceUp){
         if(f==null||d==null)return 0; double x=0;
         x+=sidePosition(f.yur,d.yur,0.75,"ЮР",why); x+=sidePosition(f.fiz,d.fiz,0.35,"ФИЗ",why);
         if(d.oiChange>0)why.add("OI ↑"); else if(d.oiChange<0)why.add("OI ↓");
-        boolean priceUp=true; // positioning classification is descriptive; direction is applied below by current candle vs prior.
         r.positionRegime=classify(f,d,priceUp);
         return x;
     }
-    private String classify(MarketApi.FutoI f,MarketApi.FutoDelta d,boolean unused){
-        if(d==null)return "нет динамики";
-        boolean longsUp=d.yur!=null&&d.yur.dLong>0, shortsUp=d.yur!=null&&d.yur.dShort>0;
-        if(d.oiChange>0&&longsUp&&shortsUp)return "ЮР: Long↑ Short↑ — открытие/перераспределение";
-        if(d.oiChange<0&&d.yur!=null&&d.yur.dShort<0)return "ЮР: Short↓ + OI↓ — возможное покрытие Short";
-        if(d.oiChange<0&&d.yur!=null&&d.yur.dLong<0)return "ЮР: Long↓ + OI↓ — ликвидация Long";
+    private String classify(MarketApi.FutoI f,MarketApi.FutoDelta d,boolean priceUp){
+        if(d==null || d.yur==null)return "нет динамики";
+
+        double dl=d.yur.dLong;
+        double ds=d.yur.dShort;
+        double oi=d.oiChange;
+
+        if(priceUp && dl>0 && ds<0 && oi>0)
+            return "BULL: цена↑ · ЮР Long↑ Short↓ · OI↑ — набор Long";
+
+        if(!priceUp && dl<0 && ds>0 && oi>0)
+            return "BEAR: цена↓ · ЮР Long↓ Short↑ · OI↑ — набор Short";
+
+        if(priceUp && ds<0 && oi<0)
+            return "SHORT COVERING: цена↑ · ЮР Short↓ · OI↓";
+
+        if(!priceUp && dl<0 && oi<0)
+            return "LONG LIQUIDATION: цена↓ · ЮР Long↓ · OI↓";
+
+        if(oi>0 && dl>0 && ds>0)
+            return "FUTOI: OI↑ · ЮР Long↑ Short↑ — открытие/перераспределение";
+
+        if(oi<0 && dl<0 && ds<0)
+            return "FUTOI: OI↓ · ЮР Long↓ Short↓ — закрытие позиций";
+
         return "FUTOI: смешанная динамика";
     }
+
     private double sidePosition(MarketApi.Side s,MarketApi.SideDelta d,double w,String label,List<String> why){
         if(s==null||d==null)return 0; double x=0;
         if(d.dLong>0&&d.dShort<0){x+=w;why.add(label+" Long↑ Short↓");}
@@ -128,8 +147,11 @@ public final class ScannerEngine {
             boolean zoneOk=z==null || x.l<=z.high+atr*.25;
             boolean sweep=x.l<prevLow-atr*.03 && x.c>prevLow && bullishRejection(x) && zoneOk;
             if(!sweep)continue;
-            int bos=findBullBos(b,i+1,Math.min(end,i+10),atr); if(bos<0)continue;
-            int ret=findBullRetest(b,bos,Math.min(end,bos+8),atr); if(ret<0)continue;
+            e.sweep=i;
+            int bos=findBullBos(b,i+1,Math.min(end,i+10),atr);
+            if(bos<0)return e;
+            e.bos=bos;
+            int ret=findBullRetest(b,bos,Math.min(end,bos+8),atr); if(ret<0)return e;
             e.sweep=i;e.bos=bos;e.retest=ret;return e;
         } return e; }
     private Event findBearishSequence(List<Bar>b,double atr,Zone z){Event e=new Event(); int n=b.size(),from=Math.max(20,n-32),end=n-1;
@@ -137,7 +159,7 @@ public final class ScannerEngine {
             double prevHigh=highBefore(b,i,12); Bar x=b.get(i); boolean zoneOk=z==null||x.h>=z.low-atr*.25;
             boolean sweep=x.h>prevHigh+atr*.03&&x.c<prevHigh&&bearishRejection(x)&&zoneOk; if(!sweep)continue;
             int bos=findBearBos(b,i+1,Math.min(end,i+10),atr); if(bos<0)continue;
-            int ret=findBearRetest(b,bos,Math.min(end,bos+8),atr); if(ret<0)continue;
+            int ret=findBearRetest(b,bos,Math.min(end,bos+8),atr); if(ret<0)return e;
             e.sweep=i;e.bos=bos;e.retest=ret;return e;
         } return e; }
     private int findBullBos(List<Bar>b,int s,int e,double atr){for(int i=s;i<=e;i++){double level=highBefore(b,i,8);Bar x=b.get(i);if(x.c>level+atr*.05&&body(x)>=atr*.45&&x.v>=avgVolBefore(b,i,20)*1.10)return i;}return -1;}
