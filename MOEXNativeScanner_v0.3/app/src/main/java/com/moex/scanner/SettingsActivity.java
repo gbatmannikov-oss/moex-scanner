@@ -1,0 +1,6 @@
+package com.moex.scanner;
+import android.app.*;import android.os.*;import android.widget.*;import android.graphics.Color;
+public class SettingsActivity extends Activity{
+ SecureStore store; EditText token; TextView result;
+ @Override public void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_settings);store=new SecureStore(this);token=findViewById(R.id.token);result=findViewById(R.id.result); token.setText(store.get());findViewById(R.id.save).setOnClickListener(v->{try{store.put(token.getText().toString().trim());result.setText("Сохранено на устройстве.");}catch(Exception e){result.setText("Ошибка хранения: "+e.getMessage());}});findViewById(R.id.test).setOnClickListener(v->new Thread(()->{try{MarketApi api=new MarketApi(store.get());org.json.JSONObject j=api.futoi("Si"); org.json.JSONObject f=j.optJSONObject("futoi"); String dbg=(f==null?"НЕТ блока futoi":("COLUMNS:\n"+String.valueOf(f.optJSONArray("columns"))+"\n\nDATA[0]:\n"+(f.optJSONArray("data")!=null&&f.optJSONArray("data").length()>0?String.valueOf(f.optJSONArray("data").optJSONArray(0)):"нет данных"))); runOnUiThread(()->result.setText(dbg));}catch(Exception e){runOnUiThread(()->result.setText("Ошибка Algopack: "+e.getMessage()));}}).start());}
+}

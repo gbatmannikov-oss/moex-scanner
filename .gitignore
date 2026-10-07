@@ -1,0 +1,11 @@
+*.apk
+*.pem
+*.log
+.gradle/
+**/build/
+**/local.properties
+
+*.bak
+*.before_*
+app_v06_backup/
+build.txt
