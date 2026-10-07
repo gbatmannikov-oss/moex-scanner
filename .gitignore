@@ -9,3 +9,7 @@
 *.before_*
 app_v06_backup/
 build.txt
+*.bak*
+*_backup.txt
+*_before_*.txt
+*.good
