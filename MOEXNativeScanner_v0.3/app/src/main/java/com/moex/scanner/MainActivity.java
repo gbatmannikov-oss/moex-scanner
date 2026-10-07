@@ -111,6 +111,7 @@ if(!m1Fresh || !h1Fresh){
         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,10);card.setLayoutParams(cp);
         TextView head=t("%s   •   %s   •   Оценка %s\n%s",r.ticker,r.signal,String.format(Locale.US,"%+.2f",r.score),r.setup);head.setTextSize(16);head.setTextColor(r.signal.equals("LONG")?0xff7CFF9B:r.signal.equals("SHORT")?0xffff8a80:Color.WHITE);head.setTypeface(null,1);card.addView(head);
             card.addView(t(r.progress));
+            card.addView(t("Готовность сетапа: "+r.readiness+"%"));
         card.addView(t("Цена %s   Вход %s\nСтоп %s   Цель1 %s   Цель2 %s",fmt(r.price),fmt(r.entry),fmt(r.sl),fmt(r.tp1),fmt(r.tp2)));
         card.addView(t("H1 ATR %s   M5 ATR %s   VWAP %s",fmt(r.h1Atr),fmt(r.atr),fmt(r.vwap)));
         String y=String.format(Locale.US,"ЮР   Лонг %.0f / Шорт %.0f / Баланс %+.0f",r.futoI.yur.longPos,r.futoI.yur.shortPos,r.futoI.yur.net());

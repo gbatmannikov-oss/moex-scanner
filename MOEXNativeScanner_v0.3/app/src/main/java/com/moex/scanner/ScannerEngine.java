@@ -11,6 +11,7 @@ public final class ScannerEngine {
     public static class Bar { public double o,h,l,c,v; public long ts; public Bar(double o,double h,double l,double c,double v){this(o,h,l,c,v,0);} public Bar(double o,double h,double l,double c,double v,long ts){this.o=o;this.h=h;this.l=l;this.c=c;this.v=v;this.ts=ts;} }
     public static class Result {
         public String ticker, signal="WAIT", setup="NO SETUP", reasons="", progress="";
+        public int readiness=0;
         public double score,entry,sl,tp1,tp2,price,atr,h1Atr,vwap,rr;
         public double zoneLow,zoneHigh; public boolean sweepLow,sweepHigh,breakUp,breakDown,retest,retestUp,retestDown,displacement,cancelled;
         public String zoneType="",positionRegime="";
@@ -43,6 +44,7 @@ public final class ScannerEngine {
         r.sweepHigh=bear.sweep>=0; r.breakDown=bear.bos>=0;
         r.displacement=(bull.bos>=0 || bear.bos>=0);
         if(nearDemand) r.progress="ЗОНА H1 ✓ → СНЯТИЕ LOW "+(r.sweepLow?"✓":"⏳")+" → СЛОМ ВВЕРХ "+(r.breakUp?"✓":"⏳")+" → РЕТЕСТ "+(r.retestUp?"✓":"⏳"); else if(nearSupply) r.progress="ЗОНА H1 ✓ → СНЯТИЕ HIGH "+(r.sweepHigh?"✓":"⏳")+" → СЛОМ ВНИЗ "+(r.breakDown?"✓":"⏳")+" → РЕТЕСТ "+(r.retestDown?"✓":"⏳"); else r.progress="ЗОНА H1 ⏳ → СНЯТИЕ — → СЛОМ — → РЕТЕСТ —";
+        if(nearDemand) r.readiness=25+(r.sweepLow?25:0)+(r.breakUp?25:0)+(r.retestUp?25:0); else if(nearSupply) r.readiness=25+(r.sweepHigh?25:0)+(r.breakDown?25:0)+(r.retestDown?25:0); else r.readiness=0;
         if(r.sweepLow){score+=1.4;why.add("M5 sweep ↓ + close back");}
         if(r.sweepHigh){score-=1.4;why.add("M5 sweep ↑ + close back");}
         if(bull.bos>=0){score+=1.5;why.add("BOS ↑ + displacement");}
